@@ -14,6 +14,7 @@ import { MeetingServer } from './meetingServer'
 import { BuiltinKnowledgeServer } from './builtinKnowledgeServer'
 import { BuiltinKnowledgeConfig } from '@shared/presenter'
 import { AppleServer } from './appleServer'
+import { GitHubPRServer } from './githubPRServer'
 
 export function getInMemoryServer(
   serverName: string,
@@ -91,6 +92,8 @@ export function getInMemoryServer(
         throw new Error('Apple Server is only supported on macOS')
       }
       return new AppleServer()
+    case 'deepchat-inmemory/github-pr-server':
+      return new GitHubPRServer(env)
     default:
       throw new Error(`Unknown in-memory server: ${serverName}`)
   }
