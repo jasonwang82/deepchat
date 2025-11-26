@@ -246,6 +246,10 @@
     "deepchat/apple-server": {
       "desc": "Let models operate macOS apps like Calendar, Contacts, Mail, Maps, Notes, and Reminders.",
       "name": "macOS System Assistant"
+    },
+    "deepchat-inmemory/github-pr-server": {
+      "name": "GitHub PR Assistant",
+      "desc": "Submit merge requests to remote repositories, create GitHub Pull Requests, list repositories and branches."
     }
   },
   "prompts": {
