@@ -106,7 +106,7 @@ export class GitHubPRServer {
 
   constructor(env?: Record<string, unknown>) {
     if (!env?.token) {
-      throw new Error('GitHub token is required')
+      throw new Error('Authentication configuration is required')
     }
     this.token = env.token as string
 
@@ -132,6 +132,17 @@ export class GitHubPRServer {
     this.server.connect(transport)
   }
 
+  // Build query string from parameters
+  private buildQueryString(params: Record<string, string | number | undefined>): string {
+    const query = new URLSearchParams()
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        query.append(key, String(value))
+      }
+    }
+    return query.toString()
+  }
+
   // GitHub API request helper
   private async githubRequest<T>(
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
@@ -143,9 +154,10 @@ export class GitHubPRServer {
       method,
       url,
       headers: {
-        Authorization: `Bearer ${this.token}`,
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'DeepChat-GitHub-PR-Server'
+        Authorization: `token ${this.token}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'DeepChat-GitHub-PR-Server',
+        'X-GitHub-Api-Version': '2022-11-28'
       },
       data
     })
@@ -178,12 +190,12 @@ export class GitHubPRServer {
     sort?: string
     per_page?: number
   }): Promise<GitHubRepository[]> {
-    const query = new URLSearchParams()
-    if (params.type) query.append('type', params.type)
-    if (params.sort) query.append('sort', params.sort)
-    if (params.per_page) query.append('per_page', params.per_page.toString())
-
-    return await this.githubRequest<GitHubRepository[]>('GET', `/user/repos?${query.toString()}`)
+    const queryStr = this.buildQueryString({
+      type: params.type,
+      sort: params.sort,
+      per_page: params.per_page
+    })
+    return await this.githubRequest<GitHubRepository[]>('GET', `/user/repos?${queryStr}`)
   }
 
   // List branches for a repository
@@ -192,12 +204,10 @@ export class GitHubPRServer {
     repo: string
     per_page?: number
   }): Promise<GitHubBranch[]> {
-    const query = new URLSearchParams()
-    if (params.per_page) query.append('per_page', params.per_page.toString())
-
+    const queryStr = this.buildQueryString({ per_page: params.per_page })
     return await this.githubRequest<GitHubBranch[]>(
       'GET',
-      `/repos/${params.owner}/${params.repo}/branches?${query.toString()}`
+      `/repos/${params.owner}/${params.repo}/branches?${queryStr}`
     )
   }
 
@@ -219,13 +229,13 @@ export class GitHubPRServer {
     state?: string
     per_page?: number
   }): Promise<GitHubPullRequest[]> {
-    const query = new URLSearchParams()
-    if (params.state) query.append('state', params.state)
-    if (params.per_page) query.append('per_page', params.per_page.toString())
-
+    const queryStr = this.buildQueryString({
+      state: params.state,
+      per_page: params.per_page
+    })
     return await this.githubRequest<GitHubPullRequest[]>(
       'GET',
-      `/repos/${params.owner}/${params.repo}/pulls?${query.toString()}`
+      `/repos/${params.owner}/${params.repo}/pulls?${queryStr}`
     )
   }
 
@@ -436,7 +446,25 @@ export class GitHubPRServer {
             throw new Error(`Unknown tool: ${name}`)
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+        // Sanitize error messages to avoid exposing sensitive information
+        let errorMessage = 'An error occurred while processing the request'
+        if (error instanceof Error) {
+          // Check for common API errors and provide generic messages
+          const msg = error.message.toLowerCase()
+          if (msg.includes('not found') || msg.includes('404')) {
+            errorMessage = 'The requested resource was not found'
+          } else if (msg.includes('unauthorized') || msg.includes('401')) {
+            errorMessage = 'Authentication failed. Please check your credentials'
+          } else if (msg.includes('forbidden') || msg.includes('403')) {
+            errorMessage = 'Access denied. You may not have permission for this action'
+          } else if (msg.includes('rate limit') || msg.includes('429')) {
+            errorMessage = 'Rate limit exceeded. Please try again later'
+          } else if (msg.includes('validation') || msg.includes('invalid')) {
+            errorMessage = 'Invalid request parameters'
+          } else if (msg.includes('unknown tool')) {
+            errorMessage = error.message
+          }
+        }
         return {
           content: [{ type: 'text', text: `Error: ${errorMessage}` }],
           isError: true
