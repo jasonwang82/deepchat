@@ -675,7 +675,7 @@ export type LLM_EMBEDDING_ATTRS = {
   normalized: boolean
 }
 
-export type AcpBuiltinAgentId = 'kimi-cli' | 'claude-code-acp' | 'codex-acp'
+export type AcpBuiltinAgentId = 'kimi-cli' | 'claude-code-acp' | 'codex-acp' | 'codebuddy-code-acp'
 
 export interface AcpAgentProfile {
   id: string

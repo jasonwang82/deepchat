@@ -66,6 +66,10 @@ const BUILTIN_INIT_COMMANDS: Record<AcpBuiltinAgentId, InitCommandConfig> = {
   'codex-acp': {
     commands: ['npm i -g @zed-industries/codex-acp', 'npm install -g @openai/codex', 'codex'],
     description: 'Initialize Codex CLI ACP'
+  },
+  'codebuddy-code-acp': {
+    commands: ['npm install -g @tencent-ai/codebuddy-code', 'codebuddy'],
+    description: 'Initialize CodeBuddy Code ACP'
   }
 }
 
